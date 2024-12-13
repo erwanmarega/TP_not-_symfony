@@ -1,0 +1,29 @@
+security:
+    # Provider settings
+    providers:
+        in_memory: { memory: ~ }
+
+    # Firewalls
+    firewalls:
+        # Le firewall pour les API (si vous utilisez JWT)
+        api:
+            pattern: ^/api/
+            stateless: true
+            jwt: ~  # Cette option pour activer JWT
+
+        # Le firewall pour l'interface web (authentification standard)
+        main:
+            # Utilisation de la connexion standard
+            form_login:
+                login_path: login
+                check_path: login_check
+            logout:
+                path: /logout
+            # Activez CSRF protection si vous l'utilisez
+            # csrf_protection: ~
+
+    # Les règles de contrôle d'accès
+    access_control:
+        - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }  # Permet l'accès à /api/login sans authentification
+        - { path: ^/api/, roles: ROLE_USER }  # Restreint l'accès aux API pour les utilisateurs authentifiés
+        - { path: ^/admin, roles: ROLE_ADMIN }  # Exemple pour restreindre l'accès aux pages admin aux administrateurs seulement
