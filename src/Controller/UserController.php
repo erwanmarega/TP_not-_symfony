@@ -5,95 +5,83 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Form\UserType;
 use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Password\PasswordHasherInterface;  
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class UserController extends AbstractController
 {
-    #[Route('/profile', name: 'user_profile', methods: ['GET'])]
-    public function profile(): Response
+    // Création d'un utilisateur (CRUD) avec mot de passe sécurisé
+    #[Route('/admin/user/create', name: 'admin_user_create')]
+    public function create(Request $request, EntityManagerInterface $em, PasswordHasherInterface $passwordHasher): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_USER');
-
-        return $this->render('user/profile.html.twig', [
-            'user' => $this->getUser(),
-        ]);
-    }
-
-    #[Route('/profile/edit', name: 'user_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, EntityManagerInterface $entityManager): Response
-    {
-        $this->denyAccessUnlessGranted('ROLE_USER');
-
-        $user = $this->getUser();
+        $user = new User();
         $form = $this->createForm(UserType::class, $user);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
+            // Encoder le mot de passe de l'utilisateur avec le hasher
+            $hashedPassword = $passwordHasher->hash($user->getPassword());
+            $user->setPassword($hashedPassword);  // Définir le mot de passe haché
 
-            return $this->redirectToRoute('user_profile');
+            // Enregistrer l'utilisateur dans la base de données
+            $em->persist($user);
+            $em->flush();
+
+            // Rediriger vers la liste des utilisateurs après la création
+            return $this->redirectToRoute('admin_user_index');
         }
 
-        return $this->render('user/edit.html.twig', [
-            'user' => $user,
+        return $this->render('admin/user/create.html.twig', [
             'form' => $form->createView(),
         ]);
     }
 
-    #[Route('/admin/users', name: 'admin_user_index', methods: ['GET'])]
+    // Liste des utilisateurs
+    #[Route('/admin/users', name: 'admin_user_index')]
     public function index(UserRepository $userRepository): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
-
+        $users = $userRepository->findAll();  // Récupérer tous les utilisateurs
         return $this->render('admin/user/index.html.twig', [
-            'users' => $userRepository->findAll(),
+            'users' => $users,
         ]);
     }
 
-    #[Route('/admin/user/{id}', name: 'admin_user_show', methods: ['GET'])]
-    public function show(User $user): Response
+    // Modifier un utilisateur
+    #[Route('/admin/user/{id}/edit', name: 'admin_user_edit')]
+    public function edit(Request $request, User $user, EntityManagerInterface $em, PasswordHasherInterface $passwordHasher): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
-
-        return $this->render('admin/user/show.html.twig', [
-            'user' => $user,
-        ]);
-    }
-
-    #[Route('/admin/user/{id}/edit', name: 'admin_user_edit', methods: ['GET', 'POST'])]
-    public function adminEdit(Request $request, User $user, EntityManagerInterface $entityManager): Response
-    {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
-
         $form = $this->createForm(UserType::class, $user);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
+            // Si le mot de passe est modifié, le hacher à nouveau
+            if ($user->getPassword()) {
+                $hashedPassword = $passwordHasher->hash($user->getPassword());
+                $user->setPassword($hashedPassword);
+            }
+
+            // Enregistrer les modifications dans la base de données
+            $em->flush();
 
             return $this->redirectToRoute('admin_user_index');
         }
 
         return $this->render('admin/user/edit.html.twig', [
-            'user' => $user,
             'form' => $form->createView(),
         ]);
     }
 
-    #[Route('/admin/user/{id}', name: 'admin_user_delete', methods: ['POST'])]
-    public function delete(Request $request, User $user, EntityManagerInterface $entityManager): Response
+    // Supprimer un utilisateur
+    #[Route('/admin/user/{id}/delete', name: 'admin_user_delete')]
+    public function delete(User $user, EntityManagerInterface $em): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
-
-        if ($this->isCsrfTokenValid('delete'.$user->getId(), $request->request->get('_token'))) {
-            $entityManager->remove($user);
-            $entityManager->flush();
-        }
+        // Supprimer l'utilisateur de la base de données
+        $em->remove($user);
+        $em->flush();
 
         return $this->redirectToRoute('admin_user_index');
     }

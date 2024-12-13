@@ -4,7 +4,6 @@ namespace App\Form;
 
 use App\Entity\User;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -15,16 +14,9 @@ class UserType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('email', EmailType::class, [
-                'label' => 'Email',
-            ])
-            ->add('name', TextType::class, [
-                'label' => 'Nom',
-            ])
-            ->add('phoneNumber', TextType::class, [
-                'label' => 'Numéro de téléphone',
-            ])
-            // Vous pouvez ajouter d'autres champs si nécessaire
+            ->add('username', TextType::class)
+            ->add('email', TextType::class)
+            ->add('password', PasswordType::class)
         ;
     }
 
